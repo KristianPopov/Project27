@@ -171,8 +171,8 @@ public:
       
       //physics of the object
       
-      void phys_fall(float Vo,float J,int timer){
-           z+=(Vo/1000 - J*0.000001*timer)/2;  
+      void phys_fall(float Vo,float G,int timer){
+           z+=(Vo/1000 - G*0.000001*timer)/2;
       }
 };
 
@@ -212,8 +212,10 @@ public:
 
 class player: public camera{
       float eyes_level;
+      float lenght, width, height;
+      
 public:
-       player(): eyes_level(1.7){}
+       player(): eyes_level(1.7), lenght(0.6), width(0.6), height(1.8){}
        
        float get_eyes_lvl(){
              return eyes_level;
@@ -222,6 +224,31 @@ public:
        void set_eyes_lvl(float new_lvl){
             eyes_level=new_lvl;
        }
+       
+              float  get_lenght() {
+          return lenght;       
+       }
+       
+       float  get_width() {
+          return width;       
+       }
+       
+       float  get_height() {
+          return height;        
+       }
+
+
+       void  set_lenght(float new_lenght) {
+          lenght = new_lenght;         
+       }
+
+       void  set_width(float new_width) {
+          width = new_width;         
+       }
+       
+       void  set_height(float new_height) {
+          height = new_height;         
+       }  
        
        //minimum time is 1 milisecond in physics
        //so we need to convert m/s to m/ms
@@ -244,7 +271,37 @@ public:
        void move_right(float speed){
             set_y(get_y()-(speed/1000)*sin(get_angle_z()*PI/180)); 
             set_x(get_x()+(speed/1000)*cos(get_angle_z()*PI/180));            
-       }       
+       }
+       
+       void do_crouch(bool updown, float transition, float min_lvl, float max_lvl){
+            if(updown){
+                if (get_height() < max_lvl){
+                   set_height(get_height()+(transition)/1000);
+                   set_eyes_lvl(get_eyes_lvl()+(transition)/1000);
+                }
+            }
+            else{
+                if (get_height() > min_lvl){
+                   set_height(get_height()-(transition)/1000);
+                   set_eyes_lvl(get_eyes_lvl()-(transition)/1000);
+                }                     
+            }                           
+       }
+       
+      void do_prone(bool updown, float transition){
+            if(updown){
+/*              if (get_height() < max_lvl){
+                   set_height(get_height()+(transition)/1000);
+                   set_eyes_lvl(get_eyes_lvl()+(transition)/1000);
+                }*/
+            }
+            else{
+/*              if (get_height() > min_lvl){
+                   set_height(get_height()-(transition)/1000);
+                   set_eyes_lvl(get_eyes_lvl()-(transition)/1000);
+                } */                  
+            }                           
+       } 
        
 };
 
@@ -335,7 +392,7 @@ public:
           coords[1][2]=0;
           coords[2][0]=2;
           coords[2][1]=2;
-          coords[2][2]=0.1;
+          coords[2][2]=5;
 
           indices[0]=0;
           indices[1]=1;
@@ -421,4 +478,8 @@ int PolygonDetect(float &temp,
                 }
            }
            else return -1;
+}
+
+float speed_trans(float acc,float Vo,float Vmax){
+      
 }
