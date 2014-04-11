@@ -3,14 +3,11 @@
  *
  **************************/
 
-#include <iostream>
 #include <windows.h>
 #include <process.h>
-#include <math.h>
 #include "engine.h" //Game engine
 #include "GL_Rendering.h"
 
-using namespace std;
 
 /**************************
  * Function Declarations
@@ -23,11 +20,16 @@ void EnableOpenGL (HWND hWnd, HDC *hDC, HGLRC *hRC);
 void DisableOpenGL (HWND hWnd, HDC hDC, HGLRC hRC);
 LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
 WPARAM wParam, LPARAM lParam);
-
+float Check(bool SorG, float a, float b, float c);
+int Check_ID(bool SorG, float a, float b, float c);
+int Check_sign(float a, float b);
+float modul(float a);
 /**************************
  * Global Objects Declarations
  *
  **************************/
+
+colison col;
 player main_player;
 map test_map(50,50);
 movable_objects movable[10] = {movable_objects(-10, -5, 0, 1, 1, 1), 
@@ -41,8 +43,13 @@ movable_objects movable[10] = {movable_objects(-10, -5, 0, 1, 1, 1),
                                movable_objects(14, -18, 0, 0.5, 0.5, 0.5),
                                movable_objects(21, 0, 0, 1, 1, 1),};
 timer Timer;
+timer PhysTimer;
 
-bool move_forward=0, move_back=0, move_right=0, move_left=0;
+bool move_forward=0, move_back=0, move_right=0, move_left=0, crounch=0;
+
+bool boom;
+
+float temp;
 
 /**************************
  * WinMain
@@ -71,8 +78,11 @@ int WINAPI WinMain (HINSTANCE hInstance,
     float specularLight0[] = { 1.0f, 1.0f, 1.0f, 1.0f };
     float position0[] = { 100, 100, 0,  1 };
     float azth=0,elev=0;
-
-      camera cam;
+    GLfloat maxAniso = 16.0f;
+    
+    bool advert=true;
+    
+    camera cam;
     
     /* register window class */
     wc.style = CS_OWNDC;
@@ -103,16 +113,25 @@ int WINAPI WinMain (HINSTANCE hInstance,
     /* enable OpenGL for the window */
     EnableOpenGL (hWnd, &hDC, &hRC);
     
+    PlaySound("Sounds/Powered.wav", NULL, SND_ASYNC);
+    
     //GLuint *frame = (GLuint *)malloc(sizeof(GLuint)*10);
     
     /*initialize OpenGL */
     GL_init();
 
     /* Load some textures */
-    GLuint sad = loadTexture(true, "Textures/sad.dds" );
+    GLuint sad = loadTexture(true, "Textures/powered_tex.dds" );
     GLuint crate = loadTexture(true, "Textures/crate001.dds" );
     GLuint fence = loadTexture(true, "Textures/fence.dds" );
     GLuint ground = loadTexture(true, "Textures/ground.dds" );
+    GLuint skybox[5] = {
+           loadTexture(true, "Textures/skybox_top.dds" ),
+           loadTexture(true, "Textures/skybox_left.dds" ),
+           loadTexture(true, "Textures/skybox_front.dds" ),
+           loadTexture(true, "Textures/skybox_right.dds" ),
+           loadTexture(true, "Textures/skybox_back.dds" )
+    };
     
     /*starts timing thread*/
     HANDLE h = (HANDLE)_beginthread((void(*)(void*))Timing_Thread, 0, NULL);
@@ -148,22 +167,35 @@ int WINAPI WinMain (HINSTANCE hInstance,
          
          glPushMatrix ();
          
+         glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
+          glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso);
+         
          main_player.set_angles(azth,elev);
          
-         CameraUse(cam,azth,elev,main_player.get_x(),main_player.get_y(),main_player.get_eyes_lvl());
+         CameraUse(cam,azth,elev,main_player.get_x(),main_player.get_y(),main_player.get_eyes_lvl()+main_player.get_z());
          
-         cout<<main_player.get_x()<<' '<<main_player.get_y()<<endl;
+         cout<<main_player.get_x()<<' '<<main_player.get_y()<<' ' << main_player.get_z()<<endl;
          
              glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight0);
             	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight0);
             	glLightfv(GL_LIGHT0, GL_SPECULAR, specularLight0);
              glLightfv(GL_LIGHT0, GL_POSITION, position0);
              
-          RenderSkybox();
+          RenderSkybox(skybox);
           RenderMap(fence,ground);
+          if(boom) glColor3f(1,0,0);
+          else glColor3f(1,1,1);     
           RenderMovable(movable,crate);
+          RenderColison(col);    
           glPopMatrix();
 
+          glPushMatrix();
+           glScalef(0.4,0.4,1);
+           if(advert){
+           advert = SAD_Engine_Advert(sad,Timer.get());
+           }
+          glPopMatrix();
+         
             SwapBuffers (hDC);
 
             theta += 0.1f;
@@ -211,6 +243,8 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
                          break;
         case 'S': move_back=true;
                          break;
+        case VK_CONTROL: crounch=true;
+                         break;
         case VK_ESCAPE:
             PostQuitMessage(0);
             return 0;
@@ -220,14 +254,16 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
     case WM_KEYUP:
          switch (wParam)
          {
-          case 'D': move_right=false;
-                    break;
-          case 'A': move_left=false;
-                    break;
-	      case 'W': move_forward=false;
-                    break;
-	      case 'S': move_back=false;
-                    break;
+          case 'D':   move_right=false;
+                      break;
+          case 'A':   move_left=false;
+                      break;
+	      case 'W':   move_forward=false;
+                      break;
+	      case 'S':   move_back=false;
+                      break;
+        case VK_CONTROL: crounch=false;
+                      break;
          }
          return 0;
 
@@ -243,6 +279,7 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
 
 void EnableOpenGL (HWND hWnd, HDC *hDC, HGLRC *hRC)
 {
+     
     PIXELFORMATDESCRIPTOR pfd;
     int iFormat;
 
@@ -256,8 +293,8 @@ void EnableOpenGL (HWND hWnd, HDC *hDC, HGLRC *hRC)
     pfd.dwFlags = PFD_DRAW_TO_WINDOW | 
       PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
     pfd.iPixelType = PFD_TYPE_RGBA;
-    pfd.cColorBits = 24;
-    pfd.cDepthBits = 16;
+    pfd.cColorBits = 32;
+    pfd.cDepthBits = 24;
     pfd.iLayerType = PFD_MAIN_PLANE;
     iFormat = ChoosePixelFormat (*hDC, &pfd);
     SetPixelFormat (*hDC, iFormat, &pfd);
@@ -286,8 +323,10 @@ void DisableOpenGL (HWND hWnd, HDC hDC, HGLRC hRC)
 
 void Timing_Thread(void* PARAMS){
      Timer.reset();
+     PhysTimer.reset();
      while(1){
         Timer.inc();
+        PhysTimer.inc();
         Sleep(1);
      }
 }
@@ -298,6 +337,9 @@ void Timing_Thread(void* PARAMS){
  ******************/
 
 void Phys_Thread(void* PARAMS){
+     float A_x,A_y,A_z;
+     float B_x,B_y,B_z;
+     float C_x,C_y,C_z;
      while(1){
          if(move_forward)
          {
@@ -315,6 +357,11 @@ void Phys_Thread(void* PARAMS){
          { 
             main_player.move_right(4.1);
          }
+         if(crounch)
+         {
+            main_player.set_eyes_lvl(0.7);
+         }
+         else main_player.set_eyes_lvl(1.7);
          
          if (main_player.get_x()+0.3>=test_map.get_width()/2){ 
             main_player.set_x(test_map.get_width()/2-0.3);
@@ -359,8 +406,27 @@ void Phys_Thread(void* PARAMS){
                else main_player.set_y(movable[i].get_y()+movable[i].get_lenght()+0.3);
             }           
          }
-        }
-                                                          
+         
+
+         cout<<PolygonDetect(temp,main_player.get_x(),main_player.get_y(),main_player.get_z(),
+                              col.coords[0][0],col.coords[0][2],col.coords[0][1],
+                              col.coords[1][0],col.coords[1][2],col.coords[1][1],
+                              col.coords[2][0],col.coords[2][2],col.coords[2][1])<<endl;
+                              
+         if(0==PolygonDetect(temp,main_player.get_x(),main_player.get_y(),main_player.get_z(),
+                              col.coords[0][0],col.coords[0][2],col.coords[0][1],
+                              col.coords[1][0],col.coords[1][2],col.coords[1][1],
+                              col.coords[2][0],col.coords[2][2],col.coords[2][1])){
+                                                                                   
+              main_player.set_z(temp);
+              PhysTimer.reset();
+         }
+         else{
+              if(main_player.get_z()>0) main_player.phys_fall(0,9.81,PhysTimer.get());
+              else main_player.set_z(0);
+         }
+         
+        }                                   
         Sleep(1);
      }
 }
@@ -400,3 +466,5 @@ void XY2Polar(RECT ds,int scr_x,int scr_y, float &azimuth,float &elevation,int r
                 fy--;
            }    
 }
+
+
