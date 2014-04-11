@@ -1,6 +1,68 @@
 //Game engine. Basic classes and functions.
-
+#include <iostream>
+#include <math.h>
 #define PI 3.14159265
+
+using namespace std;
+
+void Swap(float &a,float &b){
+     float temp;
+     temp=a;
+     a=b;
+     b=temp;
+}
+
+float Check(bool SorG, float a, float b, float c){
+      if(SorG){ 
+         if(a>b){
+            if(a>c) return a;
+            else return c;
+         }
+         else{ 
+           if(b>c) return b;
+           else return c;
+         }
+      }
+      else{
+         if(a<b){
+            if(a<c) return a;
+            else return c;
+         }
+         else if(b<c) return b;
+              else return c;
+      }
+}
+
+int Check_ID(bool SorG, float a, float b, float c){
+      if(SorG){ 
+         if(a>b){
+            if(a>c) return 0;
+            else return 2;
+         }
+         else{ 
+           if(b>c) return 1;
+           else return 2;
+         }
+      }
+      else{
+         if(a<b){
+            if(a<c) return 0;
+            else return 2;
+         }
+         else if(b<c) return 1;
+              else return 2;
+      }
+}
+
+float modul(float a){
+      if(a<0) return -a;
+      else return a;
+}
+
+int Check_sign(float a, float b){
+    if(a>b) return 1;
+    else return -1;   
+}
 
 class game_object{
       float x,y,z; //coordinates of the object in the game
@@ -109,7 +171,9 @@ public:
       
       //physics of the object
       
-      void phys_fall(){}
+      void phys_fall(float Vo,float J,int timer){
+           z+=(Vo/1000 - J*0.000001*timer)/2;  
+      }
 };
 
 class camera: public game_object{
@@ -153,6 +217,10 @@ public:
        
        float get_eyes_lvl(){
              return eyes_level;
+       }
+       
+       void set_eyes_lvl(float new_lvl){
+            eyes_level=new_lvl;
        }
        
        //minimum time is 1 milisecond in physics
@@ -255,3 +323,102 @@ public:
           height = new_height;         
        }     
 };
+
+class colison{
+public:
+       colison(){
+          coords[0][0]=-2;
+          coords[0][1]=0;
+          coords[0][2]=0;
+          coords[1][0]=2;
+          coords[1][1]=0;
+          coords[1][2]=0;
+          coords[2][0]=2;
+          coords[2][1]=2;
+          coords[2][2]=0.1;
+
+          indices[0]=0;
+          indices[1]=1;
+          indices[2]=2;  
+       }
+       
+       float coords[3][3];
+       float indices[3];
+
+};
+
+int PolygonDetect(float &temp,
+                    float obj_x, float obj_y, float obj_z,
+                    float A_x, float A_y, float A_z,
+                    float B_x, float B_y, float B_z,
+                    float C_x, float C_y, float C_z)
+{
+         if((obj_x+0.001>=Check(0, A_x, B_x, C_x)) && 
+           (obj_x-0.001<=Check(1, A_x, B_x, C_x)) &&
+           (obj_y-0.001<=-Check(0,A_y, B_y, C_y)) &&
+           (obj_y+0.001>=-Check(1,A_y, B_y, C_y)) &&
+           (obj_z+0.001>=Check(0,A_z, B_z, C_z)) &&
+           (obj_z-0.001<=Check(1,A_z, B_z, C_z)))
+           {                                                                         
+                if((C_y>B_y)&&(C_y<A_y)){
+                        Swap(A_x,C_x);
+                        Swap(A_y,C_y);
+                        Swap(A_z,C_z);                
+                }
+                else{
+                    if((C_y<B_y)&&(C_y>A_y)){
+                        Swap(B_x,C_x);
+                        Swap(B_y,C_y);
+                        Swap(B_z,C_z);
+                    }               
+                }                
+           
+                if(B_x<A_x){
+                    Swap(A_x,B_x);
+                    Swap(A_y,B_y);
+                    Swap(A_z,B_z);
+                }
+
+                                                                                         
+                if((obj_x<B_x-
+                modul(B_x-C_x)*Check_sign(B_x,C_x)*
+                (-obj_y-B_y)/(C_y - B_y)) &&
+                
+                (obj_x>A_x+
+                modul(A_x-C_x)*Check_sign(C_x,A_x)*
+                (-obj_y-A_y)/(C_y - A_y)) &&
+                
+                (((-obj_y>B_y+
+                modul(A_y-B_y)*Check_sign(A_y,B_y)*
+                (-obj_x-A_x)/(B_x - A_x)) &&
+                ((C_y>A_y) || (C_y>B_y))) ||
+                
+                ((-obj_y<B_y+
+                modul(A_y-B_y)*Check_sign(A_y,B_y)*
+                (-obj_x-A_x)/(B_x - A_x)) &&
+                ((C_y<A_y) && (C_y<B_y)))))
+                
+                {
+                   temp = B_z+
+                   modul(C_z-B_z)*
+                   Check_sign(C_z,B_z)*
+                   (-obj_y-(B_y+
+                   modul(A_y-B_y)*Check_sign(A_y,B_y)*
+                   (-obj_x-A_x)/(B_x - A_x)))/(C_y -(B_y+
+                   modul(A_y-B_y)*Check_sign(A_y,B_y)*
+                   (-obj_x-A_x)/(B_x - A_x)))+
+                   modul(B_z-(A_z))*
+                   Check_sign(A_z,B_z)*
+                   (-obj_x-A_x)/(B_x - A_x);
+                   return 0;
+                }
+                else
+                {
+                   if((A_x==B_x)&&(B_y==C_x)) return 1;
+                   if((A_y==B_y)&&(B_y==C_y)) return 2;
+                   if((A_z==B_z)&&(B_z==C_z)) return 3;                       
+                   else return -1;
+                }
+           }
+           else return -1;
+}
