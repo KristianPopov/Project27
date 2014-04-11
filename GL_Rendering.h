@@ -3,21 +3,43 @@
 #include "dds.h"
 #include <gl/glu.h>
 
-void SAD_Engine_Advert(GLuint powered_tex){
+#define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
+#define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
+
+bool SAD_Engine_Advert(GLuint powered_tex,int timer){
+  if(timer<8000){
+    glBegin(GL_QUADS);
+    glColor4f(0.0f, 0.0f, 0.0f, (3000-timer)*0.0005); 
+    glTexCoord2f(0.0, 1.0);
+    glVertex3f(-1.3f, -1.0f, -1);
+    glTexCoord2f(1.0, 1.0);
+    glVertex3f(1.3f, -1.0f, -1);
+    glTexCoord2f(1.0, 0.0);
+    glVertex3f(1.3f, 1.0f,  -1);
+    glTexCoord2f(0.0, 0.0);
+    glVertex3f(-1.3f, 1.0f, -1);
+    glEnd();
+    
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, powered_tex);
     glBegin(GL_QUADS);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0); 
     glTexCoord2f(0.0, 1.0);
-    glVertex3f(0.0f, 0.0f, -1);
+    glVertex3f(-1.3f, -1.0f, -1);
     glTexCoord2f(1.0, 1.0);
-    glVertex3f(1.0f, 0.0f, -1);
+    glVertex3f(1.3f, -1.0f, -1);
     glTexCoord2f(1.0, 0.0);
-    glVertex3f(1.0f, 1.0f,  -1);
+    glVertex3f(1.3f, 1.0f,  -1);
     glTexCoord2f(0.0, 0.0);
-    glVertex3f(0.0f, 1.0f, -1);
+    glVertex3f(-1.3f, 1.0f, -1);
     glEnd();
-    glDisable(GL_TEXTURE_2D);    
+    glDisable(GL_TEXTURE_2D);
+    return true;
+  }
+  else{
+    PlaySound("Sounds/night_hunter.wav", NULL, SND_ASYNC|SND_LOOP);
+    return false;
+  }
 }
 
 void GL_init(){
@@ -46,8 +68,30 @@ void GL_init(){
      glEnableClientState (GL_TEXTURE_COORD_ARRAY);
 }
      
+void RenderColison(colison col){     
+     glPushMatrix();
+     glLineWidth(30);
+     glBegin(GL_TRIANGLES);
+     glVertex3f(col.coords[0][0],col.coords[0][1],col.coords[0][2]);
+     glVertex3f(col.coords[1][0],col.coords[1][1],col.coords[1][2]);
+     glVertex3f(col.coords[2][0],col.coords[2][1],col.coords[2][2]);
+     glEnd();
+     glPopMatrix();
+     
+}
      
 void RenderMovable(movable_objects movable[10],GLuint texture){
+     
+     glEnable(GL_MULTISAMPLE);
+     glEnable(GL_BLEND);
+     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+     glEnable(GL_LINE_SMOOTH);
+     glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
+     glEnable(GL_POINT_SMOOTH);
+     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+     glEnable(GL_POLYGON_SMOOTH);
+     glHint(GL_POLYGON_SMOOTH_HINT, GL_DONT_CARE);
+
      
        static GLfloat v[8][3];
        static GLfloat c[8][4] = {
@@ -95,20 +139,31 @@ void RenderMovable(movable_objects movable[10],GLuint texture){
       
      glPushMatrix();
      
-/*     glEnable(GL_TEXTURE_2D);
-     glBindTexture(GL_TEXTURE_2D, texture);*/
-     
      //glEnable(GL_LIGHTING);
      
      glEnable(GL_TEXTURE_2D);
      glBindTexture(GL_TEXTURE_2D, texture);
 
      glTranslatef(movable[i].get_x(),-movable[i].get_z(),-movable[i].get_y());
+     
      glVertexPointer (3, GL_FLOAT, 0, v);    
      glColorPointer (4, GL_FLOAT, 0, c);
      glNormalPointer(GL_FLOAT, 0, normals1);
      glTexCoordPointer(2, GL_FLOAT, 0, tex_coords);
      glDrawElements(GL_QUADS, 8*4, GL_UNSIGNED_BYTE, indices);
+//     glDrawElements(GL_LINES, 8*4, GL_UNSIGNED_BYTE, indices);
+
+     
+    glBegin(GL_QUADS);              
+    glTexCoord2f(1.0, 1.0);
+    glVertex3f(0.0f, movable[i].get_height(), -movable[i].get_lenght());
+    glTexCoord2f(0.0, 1.0);
+    glVertex3f(movable[i].get_width(),  movable[i].get_height(), -movable[i].get_lenght());
+    glTexCoord2f(0.0, 0.0);
+    glVertex3f(movable[i].get_width(), movable[i].get_height(),  0);
+    glTexCoord2f(1.0, 0.0);
+    glVertex3f(0.0f, movable[i].get_height(), 0);
+    glEnd();
        
      glDisable(GL_TEXTURE_2D);
      glPopMatrix();
@@ -152,6 +207,7 @@ void RenderMap(GLuint fence, GLuint ground){
      
     glBegin(GL_QUADS);
     glColor3f(1.0f, 1.0f, 1.0f);
+
                   
     glNormal3d(0, 1, 0);
     glTexCoord2f(0.0, 5.0);
@@ -165,6 +221,11 @@ void RenderMap(GLuint fence, GLuint ground){
     glEnd();
     
     glBindTexture(GL_TEXTURE_2D, fence);
+    
+    glEnable (GL_MULTISAMPLE); 
+    glEnable (GL_POLYGON_SMOOTH);
+    glEnable (GL_LINE_SMOOTH);
+    glEnable (GL_BLEND); 
     
     glBegin(GL_QUADS);
     glNormal3d(0, 0, 1);
@@ -209,60 +270,72 @@ void RenderMap(GLuint fence, GLuint ground){
     glEnd();    
 }
 
-void RenderSkybox(){
+void RenderSkybox(GLuint skybox[5]){
+     
+    glPushMatrix();
+    glTranslatef(0,-500,0);
     glDisable(GL_LIGHTING);
+    
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, skybox[0]);
+    
+    glColor3f(1.0f, 1.0f, 1.0f);
          
     glBegin(GL_QUADS);
                   
-    glColor3f(0.0f, 0.3f, 0.7f);
     glTexCoord2f(0.0, 1.0);
-    glVertex3f(-1000.0, 1000.0, 1000.0);
+    glVertex3f(-1000.0, 995.0, 1000.0);
     glTexCoord2f(1.0, 1.0);
-    glVertex3f(1000.0, 1000.0, 1000.0);
+    glVertex3f(1000.0, 995.0, 1000.0);
     glTexCoord2f(1.0, 0.0);
-    glVertex3f(1000.0, 1000.0,  -1000.0);
+    glVertex3f(1000.0, 995.0,  -1000.0);
     glTexCoord2f(0.0, 0.0);
-    glVertex3f(-1000.0, 1000.0, -1000.0);
+    glVertex3f(-1000.0, 995.0, -1000.0);
+    glEnd();
     
-    glColor3f(0.0f, 0.7f, 0.7f);               
-    glTexCoord2f(0.0, 1.0);
+
+    glBindTexture(GL_TEXTURE_2D, skybox[4]);
+    glBegin(GL_QUADS);              
+    glTexCoord2f(1.0, 1.0);
     glVertex3f(-1000.0f, 0.0f, -1000.0f);
-    glTexCoord2f(1.0, 1.0);
+    glTexCoord2f(0.0, 1.0);
     glVertex3f(1000.0f,  0.0f, -1000.0f);
-    glColor3f(0.0f, 0.3f, 0.7f);
-    glTexCoord2f(1.0, 0.0);
-    glVertex3f(1000.0f, 1000.0f,  -1000.0f);
     glTexCoord2f(0.0, 0.0);
+    glVertex3f(1000.0f, 1000.0f,  -1000.0f);
+    glTexCoord2f(1.0, 0.0);
     glVertex3f(-1000.0f, 1000.0f, -1000.0f);
-    
-    glColor3f(0.0f, 0.7f, 0.7f);              
+    glEnd();
+
+    glBindTexture(GL_TEXTURE_2D, skybox[2]);
+    glBegin(GL_QUADS);             
     glTexCoord2f(0.0, 1.0);
     glVertex3f(-1000.0f, 0.0f, 1000.0f);
     glTexCoord2f(1.0, 1.0);
     glVertex3f(1000.0f,  0.0f, 1000.0f);
-    glColor3f(0.0f, 0.3f, 0.7f);
     glTexCoord2f(1.0, 0.0);
     glVertex3f(1000.0f, 1000.0f,  1000.0f);
     glTexCoord2f(0.0, 0.0);
     glVertex3f(-1000.0f, 1000.0f, 1000.0f);
-
-    glColor3f(0.0f, 0.7f, 0.7f);    
-    glTexCoord2f(0.0, 1.0);
-    glVertex3f(1000.0f, 0.0f, -1000.0f);
+    glEnd();
+  
+    glBindTexture(GL_TEXTURE_2D, skybox[3]);
+    glBegin(GL_QUADS);
     glTexCoord2f(1.0, 1.0);
+    glVertex3f(1000.0f, 0.0f, -1000.0f);
+    glTexCoord2f(0.0, 1.0);
     glVertex3f(1000.0f, 0.0f,  1000.0f);
-    glColor3f(0.0f, 0.3f, 0.7f);
-    glTexCoord2f(1.0, 0.0);
-    glVertex3f(1000.0f, 1000.0f, 1000.0f);
     glTexCoord2f(0.0, 0.0);
+    glVertex3f(1000.0f, 1000.0f, 1000.0f);
+    glTexCoord2f(1.0, 0.0);
     glVertex3f(1000.0f, 1000.0f,-1000.0f);
+    glEnd();
     
-    glColor3f(0.0f, 0.7f, 0.7f);                
+    glBindTexture(GL_TEXTURE_2D, skybox[1]);
+    glBegin(GL_QUADS);               
     glTexCoord2f(0.0, 1.0);
     glVertex3f(-1000.0f, 0.0f, -1000.0f);
     glTexCoord2f(1.0, 1.0);
     glVertex3f(-1000.0f, 0.0f,  1000.0f);
-    glColor3f(0.0f, 0.3f, 0.7f);
     glTexCoord2f(1.0, 0.0);
     glVertex3f(-1000.0f, 1000.0f, 1000.0f);
     glTexCoord2f(0.0, 0.0);
@@ -270,4 +343,5 @@ void RenderSkybox(){
     glEnd(); 
     
     glEnable(GL_LIGHTING);
+    glPopMatrix();
 }     
