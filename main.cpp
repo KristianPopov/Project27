@@ -31,6 +31,7 @@ float modul(float a);
 
 colison col;
 player main_player;
+
 map test_map(50,50);
 movable_objects movable[10] = {movable_objects(-10, -5, 0, 1, 1, 1), 
                                movable_objects(-10, 20, 0, 1, 1, 2),
@@ -45,7 +46,7 @@ movable_objects movable[10] = {movable_objects(-10, -5, 0, 1, 1, 1),
 timer Timer;
 timer PhysTimer;
 
-bool move_forward=0, move_back=0, move_right=0, move_left=0, crounch=0;
+bool move_forward=0, move_back=0, move_right=0, move_left=0, crouch=0, jump=0, prone=0;
 
 bool boom;
 
@@ -234,38 +235,48 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
 
     case WM_KEYDOWN:
         switch (wParam)
-        {
-        case 'D': move_right=true;
-                         break;
-        case 'A': move_left=true;
-                         break;
+        {      
         case 'W': move_forward=true;
+                         break;                 
+        case 'A': move_left=true;
                          break;
         case 'S': move_back=true;
                          break;
-        case VK_CONTROL: crounch=true;
+        case 'D': move_right=true;
                          break;
+        case VK_SPACE: jump=true; //NEW
+                        break;
+        case 'C': crouch=true; //NEW
+                       break;
+        case VK_CONTROL: prone=true; //NEW
+                      break;
+                      
         case VK_ESCAPE:
             PostQuitMessage(0);
             return 0;
         }
         return 0;
         
-    case WM_KEYUP:
-         switch (wParam)
-         {
-          case 'D':   move_right=false;
+        case WM_KEYUP:
+        switch (wParam)
+        {      
+        case 'W': move_forward=false;
+                         break;                 
+        case 'A': move_left=false;
+                         break;
+        case 'S': move_back=false;
+                         break;
+        case 'D': move_right=false;
+                         break;
+        
+        case VK_SPACE: jump=false; //NEW
+                        break;
+        case 'C': crouch=false; //NEW
+                       break;
+        case VK_CONTROL: prone=false; //NEW
                       break;
-          case 'A':   move_left=false;
-                      break;
-	      case 'W':   move_forward=false;
-                      break;
-	      case 'S':   move_back=false;
-                      break;
-        case VK_CONTROL: crounch=false;
-                      break;
-         }
-         return 0;
+        }
+        return 0;
 
     default:
         return DefWindowProc (hWnd, message, wParam, lParam);
@@ -341,6 +352,7 @@ void Phys_Thread(void* PARAMS){
      float B_x,B_y,B_z;
      float C_x,C_y,C_z;
      while(1){
+              
          if(move_forward)
          {
             main_player.move_forward(4.1);          
@@ -357,11 +369,13 @@ void Phys_Thread(void* PARAMS){
          { 
             main_player.move_right(4.1);
          }
-         if(crounch)
+         if(crouch)
          {
-            main_player.set_eyes_lvl(0.7);
+             main_player.do_crouch(0,4,0.8,1.8);
          }
-         else main_player.set_eyes_lvl(1.7);
+         else main_player.do_crouch(1,4,0.8,1.8);
+         
+         
          
          if (main_player.get_x()+0.3>=test_map.get_width()/2){ 
             main_player.set_x(test_map.get_width()/2-0.3);
@@ -406,12 +420,6 @@ void Phys_Thread(void* PARAMS){
                else main_player.set_y(movable[i].get_y()+movable[i].get_lenght()+0.3);
             }           
          }
-         
-
-         cout<<PolygonDetect(temp,main_player.get_x(),main_player.get_y(),main_player.get_z(),
-                              col.coords[0][0],col.coords[0][2],col.coords[0][1],
-                              col.coords[1][0],col.coords[1][2],col.coords[1][1],
-                              col.coords[2][0],col.coords[2][2],col.coords[2][1])<<endl;
                               
          if(0==PolygonDetect(temp,main_player.get_x(),main_player.get_y(),main_player.get_z(),
                               col.coords[0][0],col.coords[0][2],col.coords[0][1],
@@ -426,7 +434,7 @@ void Phys_Thread(void* PARAMS){
               else main_player.set_z(0);
          }
          
-        }                                   
+        }                             
         Sleep(1);
      }
 }
