@@ -172,24 +172,85 @@ public:
       //physics of the object
       
       void phys_fall(float Vo,float G,int timer){
-           z+=(Vo/1000 - G*0.000001*timer)/2;
+           z+=(Vo/1000 - G*0.0000001*timer)/2;  
       }
 };
-
-class camera: public game_object{
+//-----------------------------------
+//physics for projectiles
+class projectile :public game_object{
+      float speed;
+      float accl; //acceleration
+      unsigned int proj_timer;
+      float elevation;
 public:
+      projectile(float init_speed, float init_accl)
+      : speed(init_speed), accl(init_accl){}
+      
+      float get_speed(){
+          return speed;  
+      }
+      void set_speed(float new_speed){
+           speed = new_speed;
+      }         
+    
+      float get_accl(){
+          return accl;  
+      }
+   
+      void set_accl(float new_accl){
+           accl = new_accl;
+      }
+      
+      void launch(float start_x, float start_y, float start_z, float azimuth, float elev){
+           set_x(start_x);
+           set_y(start_y);
+           set_z(start_z);
+           set_angle_y(elevation*sin(azimuth*PI/180));
+           set_angle_x(elevation*cos(azimuth*PI/180));
+           set_angle_z(azimuth);
+           elevation = elev;
+           proj_timer=0;
+      }
+      
+      void proj_path(){
+            float speed_z = (speed/1000)*sin(elevation*PI/180);
+            if(get_z()>0){
+            set_z(get_z()+ speed_z);
+            float buffer = (speed/1000)*cos(elevation*PI/180);
+            set_y(get_y()+buffer*cos(get_angle_z()*PI/180));
+            set_x(get_x()+buffer*sin(get_angle_z()*PI/180));
+            proj_timer++;
+            phys_fall(speed_z,9.81,proj_timer);
+            }      
+      }
+};
+//------------------------------------
+
+//-----------------------------------------------------------------------
+//camera class
+class camera: public game_object{
+      float elev;
+public:
+       float get_elevation(){
+             return elev;
+       }
+       
       void set_angles(float azimuth,float elevation){ //set angles of the camera
            set_angle_z(azimuth);
            set_angle_y(elevation*sin(azimuth*PI/180));
            set_angle_x(elevation*cos(azimuth*PI/180));
+           elev = elevation;
       }
       void set_coords(float new_x,float new_y, float new_z){ // set coords of the camera
            set_x(new_x);
            set_y(new_y);
-           set_z(new_z);                    
+           set_z(new_z);              
       }
 };
+//--------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------
+//timer class
 class timer{
        int t_counter;
        
@@ -209,13 +270,16 @@ public:
            return t_counter;
        }
 };
+//-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+//player class
 class player: public camera{
       float eyes_level;
       float lenght, width, height;
-      
+      float accuracy;
 public:
-       player(): eyes_level(1.7), lenght(0.6), width(0.6), height(1.8){}
+       player(): eyes_level(1.7), lenght(0.6), width(0.6), height(1.8), accuracy(1){}
        
        float get_eyes_lvl(){
              return eyes_level;
@@ -225,30 +289,43 @@ public:
             eyes_level=new_lvl;
        }
        
-              float  get_lenght() {
-          return lenght;       
+       float get_accuracy(){
+             return accuracy;
        }
        
-       float  get_width() {
-          return width;       
+       void set_accuracy(bool updown, float new_accuracy){
+            if(updown){ 
+                if(accuracy<new_accuracy) accuracy+=0.01;
+            }
+            else{
+                if(accuracy>new_accuracy) accuracy-=0.01;                 
+            }
        }
        
-       float  get_height() {
-          return height;        
+       float get_lenght() {
+          return lenght;
+       }
+       
+       float get_width() {
+          return width;
+       }
+       
+       float get_height() {
+          return height;
        }
 
 
-       void  set_lenght(float new_lenght) {
-          lenght = new_lenght;         
+       void set_lenght(float new_lenght) {
+          lenght = new_lenght;
        }
 
-       void  set_width(float new_width) {
-          width = new_width;         
+       void set_width(float new_width) {
+          width = new_width;
        }
        
-       void  set_height(float new_height) {
-          height = new_height;         
-       }  
+       void set_height(float new_height) {
+          height = new_height;
+       } 
        
        //minimum time is 1 milisecond in physics
        //so we need to convert m/s to m/ms
@@ -273,7 +350,7 @@ public:
             set_x(get_x()+(speed/1000)*cos(get_angle_z()*PI/180));            
        }
        
-       void do_crouch(bool updown, float transition, float min_lvl, float max_lvl){
+              void do_crouch(bool updown, float transition, float min_lvl, float max_lvl){
             if(updown){
                 if (get_height() < max_lvl){
                    set_height(get_height()+(transition)/1000);
@@ -284,27 +361,30 @@ public:
                 if (get_height() > min_lvl){
                    set_height(get_height()-(transition)/1000);
                    set_eyes_lvl(get_eyes_lvl()-(transition)/1000);
-                }                     
-            }                           
+                }
+            }
        }
        
       void do_prone(bool updown, float transition){
             if(updown){
-/*              if (get_height() < max_lvl){
-                   set_height(get_height()+(transition)/1000);
-                   set_eyes_lvl(get_eyes_lvl()+(transition)/1000);
-                }*/
+/* if (get_height() < max_lvl){
+set_height(get_height()+(transition)/1000);
+set_eyes_lvl(get_eyes_lvl()+(transition)/1000);
+}*/
             }
             else{
-/*              if (get_height() > min_lvl){
-                   set_height(get_height()-(transition)/1000);
-                   set_eyes_lvl(get_eyes_lvl()-(transition)/1000);
-                } */                  
-            }                           
-       } 
-       
-};
+/* if (get_height() > min_lvl){
+set_height(get_height()-(transition)/1000);
+set_eyes_lvl(get_eyes_lvl()-(transition)/1000);
+} */
+            }
+       }
+};       
+//---------------------------------------------------------------
 
+
+//-------------------------------------------------
+//map object class
 class map : public game_object {
       float lenght, width;
 
@@ -328,7 +408,11 @@ public:
           width = new_width;         
        }
 };
+//----------------------------------------------------
 
+
+//----------------------------------------------------
+//moving objects class
 class movable_objects : public game_object{
       float lenght, width, height;
 
@@ -380,7 +464,7 @@ public:
           height = new_height;         
        }     
 };
-
+//------------------------------------------------------
 class colison{
 public:
        colison(){
@@ -391,8 +475,8 @@ public:
           coords[1][1]=0;
           coords[1][2]=0;
           coords[2][0]=2;
-          coords[2][1]=2;
-          coords[2][2]=5;
+          coords[2][1]=4;
+          coords[2][2]=3;
 
           indices[0]=0;
           indices[1]=1;
@@ -404,19 +488,20 @@ public:
 
 };
 
-int PolygonDetect(float &temp,
+int PolygonDetect(float &temp_x,float &temp_y,float &temp_z,
                     float obj_x, float obj_y, float obj_z,
                     float A_x, float A_y, float A_z,
                     float B_x, float B_y, float B_z,
                     float C_x, float C_y, float C_z)
 {
-         if((obj_x+0.001>=Check(0, A_x, B_x, C_x)) && 
-           (obj_x-0.001<=Check(1, A_x, B_x, C_x)) &&
-           (obj_y-0.001<=-Check(0,A_y, B_y, C_y)) &&
-           (obj_y+0.001>=-Check(1,A_y, B_y, C_y)) &&
-           (obj_z+0.001>=Check(0,A_z, B_z, C_z)) &&
-           (obj_z-0.001<=Check(1,A_z, B_z, C_z)))
-           {                                                                         
+         if((obj_x+0.1>=Check(0, A_x, B_x, C_x)) && 
+           (obj_x-0.1<=Check(1, A_x, B_x, C_x)) &&
+           (obj_y-0.1<=-Check(0,A_y, B_y, C_y)) &&
+           (obj_y+0.1>=-Check(1,A_y, B_y, C_y)) &&
+           (obj_z+0.1>=Check(0,A_z, B_z, C_z)) &&
+           (obj_z-0.1<=Check(1,A_z, B_z, C_z)))
+           {
+                float buffer;                                                                         
                 if((C_y>B_y)&&(C_y<A_y)){
                         Swap(A_x,C_x);
                         Swap(A_y,C_y);
@@ -456,7 +541,7 @@ int PolygonDetect(float &temp,
                 ((C_y<A_y) && (C_y<B_y)))))
                 
                 {
-                   temp = B_z+
+                   temp_z = B_z+
                    modul(C_z-B_z)*
                    Check_sign(C_z,B_z)*
                    (-obj_y-(B_y+
@@ -471,10 +556,31 @@ int PolygonDetect(float &temp,
                 }
                 else
                 {
-                   if((A_x==B_x)&&(B_y==C_x)) return 1;
-                   if((A_y==B_y)&&(B_y==C_y)) return 2;
-                   if((A_z==B_z)&&(B_z==C_z)) return 3;                       
-                   else return -1;
+                   if((A_y==B_y) && (B_y==C_y)){     
+/*                          if((obj_y>A_y-0.3)&& (obj_y<A_y-0.3+0.1)){
+                          temp_y=A_y-0.3;
+                          return 0;
+                      }
+                      else if((obj_y<A_y+0.3) && (obj_y>A_y+0.3-0.1)){
+                          temp_y=A_y+0.3;
+                          return 0;                                 
+                      }*/
+                      temp_y=10;                           
+                   }          
+                   else{                       
+                       if(((A_x==C_x)&&(A_y==C_y))||((B_x==C_x)&&(B_y==C_y))){
+                           buffer=modul(A_y-B_y)*Check_sign(A_y,B_y)*(-obj_x-A_x)/(A_x-B_x);
+                           if((obj_y>=buffer-0.3)&& (obj_y<buffer-0.3+0.1)){
+                               temp_y=buffer-0.3;
+                               return 0;
+                           }
+                           else if((obj_y<buffer+0.3) && (obj_y>buffer+0.3-0.1)){
+                               temp_y=buffer+0.3;
+                               return 0;                                 
+                           }     
+                       }
+                       else return -1;
+                   }
                 }
            }
            else return -1;
