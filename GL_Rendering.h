@@ -67,6 +67,28 @@ void GL_init(){
      glEnableClientState (GL_COLOR_ARRAY);
      glEnableClientState (GL_TEXTURE_COORD_ARRAY);
 }
+
+void RenderCrosshair(GLuint crosshair_tex,float accuracy){
+    glPushMatrix();
+    glScalef(accuracy,accuracy,1);
+    glDisable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, crosshair_tex);
+    glBegin(GL_QUADS);
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0); 
+    glTexCoord2f(0.0, 1.0);
+    glVertex3f(-0.001, -0.001, -0.1);
+    glTexCoord2f(1.0, 1.0);
+    glVertex3f(0.001f, -0.001f, -0.1);
+    glTexCoord2f(1.0, 0.0);
+    glVertex3f(0.001f, 0.001f,  -0.1);
+    glTexCoord2f(0.0, 0.0);
+    glVertex3f(-0.001f, 0.001f, -0.1);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+    glEnable(GL_LIGHTING);
+    glPopMatrix();    
+}
      
 void RenderColison(colison col){     
      glPushMatrix();
@@ -78,6 +100,36 @@ void RenderColison(colison col){
      glEnd();
      glPopMatrix();
      
+}
+
+void RenderProjectile(projectile proj,camera cam,GLuint proj_tex){
+     
+    glPushMatrix();
+    
+    glTranslatef(proj.get_x(), proj.get_z(), -proj.get_y());
+    glRotatef(-cam.get_angle_z(),0,1,0);
+    glRotatef(cam.get_angle_x(),1,0,0);
+    glRotatef(-cam.get_angle_y(),0,0,1);
+    glDisable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, proj_tex);
+    glBegin(GL_QUADS);
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0); 
+    glTexCoord2f(0.0, 1.0);
+    glVertex3f(-0.1, -0.1, 0);
+    glTexCoord2f(1.0, 1.0);
+    glVertex3f(0.1f, -0.1f, 0);
+    glTexCoord2f(1.0, 0.0);
+    glVertex3f(0.1f, 0.1f,  0);
+    glTexCoord2f(0.0, 0.0);
+    glVertex3f(-0.1f, 0.1f, 0);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+    glEnable(GL_LIGHTING);
+    glPopMatrix();
+    
+    glColor4f(1,1,1,1);        
+              
 }
      
 void RenderMovable(movable_objects movable[10],GLuint texture){
