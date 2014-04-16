@@ -20,18 +20,14 @@ void EnableOpenGL (HWND hWnd, HDC *hDC, HGLRC *hRC);
 void DisableOpenGL (HWND hWnd, HDC hDC, HGLRC hRC);
 LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
 WPARAM wParam, LPARAM lParam);
-float Check(bool SorG, float a, float b, float c);
-int Check_ID(bool SorG, float a, float b, float c);
-int Check_sign(float a, float b);
-float modul(float a);
 /**************************
  * Global Objects Declarations
  *
  **************************/
 
+projectile proj(500,0);
 colison col;
 player main_player;
-
 map test_map(50,50);
 movable_objects movable[10] = {movable_objects(-10, -5, 0, 1, 1, 1), 
                                movable_objects(-10, 20, 0, 1, 1, 2),
@@ -45,12 +41,13 @@ movable_objects movable[10] = {movable_objects(-10, -5, 0, 1, 1, 1),
                                movable_objects(21, 0, 0, 1, 1, 1),};
 timer Timer;
 timer PhysTimer;
+timer FireTimer;
 
-bool move_forward=0, move_back=0, move_right=0, move_left=0, crouch=0, jump=0, prone=0;
+bool move_forward=0, move_back=0, move_right=0, move_left=0, crouch=0, jump=0, prone=0, fire=0;
 
 bool boom;
 
-float temp;
+float temp_x,temp_y,temp_z;
 
 /**************************
  * WinMain
@@ -80,6 +77,8 @@ int WINAPI WinMain (HINSTANCE hInstance,
     float position0[] = { 100, 100, 0,  1 };
     float azth=0,elev=0;
     GLfloat maxAniso = 16.0f;
+    
+    main_player.set_coords(0,0,0);
     
     bool advert=true;
     
@@ -126,6 +125,8 @@ int WINAPI WinMain (HINSTANCE hInstance,
     GLuint crate = loadTexture(true, "Textures/crate001.dds" );
     GLuint fence = loadTexture(true, "Textures/fence.dds" );
     GLuint ground = loadTexture(true, "Textures/ground.dds" );
+    GLuint crosshair = loadTexture(true, "Textures/crosshair_2.dds" );
+    GLuint bullet = loadTexture(true, "Textures/bullet.dds" );
     GLuint skybox[5] = {
            loadTexture(true, "Textures/skybox_top.dds" ),
            loadTexture(true, "Textures/skybox_left.dds" ),
@@ -172,10 +173,11 @@ int WINAPI WinMain (HINSTANCE hInstance,
           glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso);
          
          main_player.set_angles(azth,elev);
-         
+      
          CameraUse(cam,azth,elev,main_player.get_x(),main_player.get_y(),main_player.get_eyes_lvl()+main_player.get_z());
+
          
-         cout<<main_player.get_x()<<' '<<main_player.get_y()<<' ' << main_player.get_z()<<endl;
+         //cout<<main_player.get_x()<<' '<<main_player.get_y()<<' ' << main_player.get_z()<<endl;
          
              glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight0);
             	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight0);
@@ -187,7 +189,9 @@ int WINAPI WinMain (HINSTANCE hInstance,
           if(boom) glColor3f(1,0,0);
           else glColor3f(1,1,1);     
           RenderMovable(movable,crate);
-          RenderColison(col);    
+          RenderColison(col);
+          RenderProjectile(proj,main_player,bullet);
+          //cout<<proj.get_x()<<' '<<proj.get_y()<<' '<<proj.get_z()<<endl;  
           glPopMatrix();
 
           glPushMatrix();
@@ -196,6 +200,8 @@ int WINAPI WinMain (HINSTANCE hInstance,
            advert = SAD_Engine_Advert(sad,Timer.get());
            }
           glPopMatrix();
+
+          if(!advert)RenderCrosshair(crosshair,main_player.get_accuracy());
          
             SwapBuffers (hDC);
 
@@ -233,18 +239,30 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
     case WM_DESTROY:
         return 0;
 
+    case WM_LBUTTONDOWN:
+         if(FireTimer.get()>500){
+          fire=true;
+          FireTimer.reset();
+          mciSendString("play Sounds/barshot.wav", NULL, 0, NULL);
+          }
+        return 0;
+        
+    case WM_LBUTTONUP:
+         fire=false;         
+        return 0;
+
     case WM_KEYDOWN:
         switch (wParam)
-        {      
+        {
         case 'W': move_forward=true;
-                         break;                 
+                         break;
         case 'A': move_left=true;
                          break;
         case 'S': move_back=true;
                          break;
         case 'D': move_right=true;
                          break;
-        case VK_SPACE: jump=true; //NEW
+        case ' ': jump=true; //NEW
                         break;
         case 'C': crouch=true; //NEW
                        break;
@@ -259,18 +277,15 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
         
         case WM_KEYUP:
         switch (wParam)
-        {      
+        {
         case 'W': move_forward=false;
-                         break;                 
+                         break;
         case 'A': move_left=false;
                          break;
         case 'S': move_back=false;
                          break;
         case 'D': move_right=false;
                          break;
-        
-        case VK_SPACE: jump=false; //NEW
-                        break;
         case 'C': crouch=false; //NEW
                        break;
         case VK_CONTROL: prone=false; //NEW
@@ -335,9 +350,11 @@ void DisableOpenGL (HWND hWnd, HDC hDC, HGLRC hRC)
 void Timing_Thread(void* PARAMS){
      Timer.reset();
      PhysTimer.reset();
+     FireTimer.reset();
      while(1){
         Timer.inc();
         PhysTimer.inc();
+        FireTimer.inc();
         Sleep(1);
      }
 }
@@ -348,35 +365,80 @@ void Timing_Thread(void* PARAMS){
  ******************/
 
 void Phys_Thread(void* PARAMS){
-     float A_x,A_y,A_z;
-     float B_x,B_y,B_z;
-     float C_x,C_y,C_z;
+     int result;
      while(1){
-              
-         if(move_forward)
-         {
-            main_player.move_forward(4.1);          
-         }
-         if(move_back)
-         {
-            main_player.move_back(4.1);
-         }
-         if(move_left)
-         { 
-            main_player.move_left(4.1);
-         }
-         if(move_right)
-         { 
-            main_player.move_right(4.1);
-         }
+         
          if(crouch)
          {
              main_player.do_crouch(0,4,0.8,1.8);
+             if(move_forward||move_back||move_left||move_right){
+                 main_player.set_accuracy(1,2);
+                 if(move_forward)
+                 {
+                    main_player.move_forward(1.1);          
+                 }
+                 if(move_back)
+                 {
+                    main_player.move_back(0.9);
+                 }
+                 if(move_left)
+                 { 
+                    main_player.move_left(0.7);
+                 }
+                 if(move_right)
+                 { 
+                    main_player.move_right(0.7);
+                 }
+             }
+             else main_player.set_accuracy(0,0.5);
          }
-         else main_player.do_crouch(1,4,0.8,1.8);
-         
-         
-         
+         else if(prone){
+              main_player.do_crouch(0,3,0.3,1.8);
+             if(move_forward||move_back||move_left||move_right){
+                 main_player.set_accuracy(1,1);
+                 if(move_forward)
+                 {
+                    main_player.move_forward(1);          
+                 }
+                 if(move_back)
+                 {
+                    main_player.move_back(0.8);
+                 }
+                 if(move_left)
+                 { 
+                    main_player.move_left(0.6);
+                 }
+                 if(move_right)
+                 { 
+                    main_player.move_right(0.6);
+                 }
+             }
+             else main_player.set_accuracy(0,0.3);
+         }
+         else { 
+             main_player.do_crouch(1,4,0.8,1.8);
+             main_player.set_accuracy(1,1);
+             if(move_forward||move_back||move_left||move_right){
+                 main_player.set_accuracy(1,4);
+                 if(move_forward)
+                 {
+                    main_player.move_forward(4.1);          
+                 }
+                 if(move_back)
+                 {
+                    main_player.move_back(3.3);
+                 }
+                 if(move_left)
+                 { 
+                    main_player.move_left(2.4);
+                 }
+                 if(move_right)
+                 { 
+                    main_player.move_right(2.4);
+                 }
+             }
+             else main_player.set_accuracy(0,1);
+         }
          if (main_player.get_x()+0.3>=test_map.get_width()/2){ 
             main_player.set_x(test_map.get_width()/2-0.3);
             }
@@ -420,21 +482,39 @@ void Phys_Thread(void* PARAMS){
                else main_player.set_y(movable[i].get_y()+movable[i].get_lenght()+0.3);
             }           
          }
-                              
-         if(0==PolygonDetect(temp,main_player.get_x(),main_player.get_y(),main_player.get_z(),
+         
+         temp_x=main_player.get_x();
+         temp_y=main_player.get_y();
+         temp_z=main_player.get_z();         
+
+         result = PolygonDetect(temp_x,temp_y,temp_z,main_player.get_x(),main_player.get_y(),main_player.get_z(),
                               col.coords[0][0],col.coords[0][2],col.coords[0][1],
                               col.coords[1][0],col.coords[1][2],col.coords[1][1],
-                              col.coords[2][0],col.coords[2][2],col.coords[2][1])){
-                                                                                   
-              main_player.set_z(temp);
+                              col.coords[2][0],col.coords[2][2],col.coords[2][1]);                   
+         if((!result) && (!jump)){
+              main_player.set_coords(temp_x,temp_y,temp_z);
               PhysTimer.reset();
          }
-         else{
-              if(main_player.get_z()>0) main_player.phys_fall(0,9.81,PhysTimer.get());
-              else main_player.set_z(0);
+         else{ 
+              if(jump){
+                       if((main_player.get_z()>=temp_z) && (main_player.get_z()>0)) main_player.phys_fall(1,9.81,PhysTimer.get());
+                       else jump=false;
+              }
+              else{
+                      if(main_player.get_z()>0) main_player.phys_fall(0,9.81,PhysTimer.get());
+                      else main_player.set_z(0);
+              }
          }
          
-        }                             
+         if(Timer.get()>2000){
+         if(fire){
+             proj.launch(main_player.get_x(),main_player.get_y(),main_player.get_eyes_lvl()+main_player.get_z()-0.1,main_player.get_angle_z()-(rand()%(int)(main_player.get_accuracy()*1000))/1000,-main_player.get_elevation()+(rand()%(int)(main_player.get_accuracy()*1000))/1000);
+             fire=false;
+         }
+         proj.proj_path();
+         }
+         
+        }                                   
         Sleep(1);
      }
 }
