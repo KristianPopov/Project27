@@ -172,7 +172,7 @@ public:
       //physics of the object
       
       void phys_fall(float Vo,float G,int timer){
-           z+=(Vo/1000 - G*0.0000001*timer)/2;  
+           z+=(Vo/1000 - G*0.0000001*timer)/2; 
       }
 };
 //-----------------------------------
@@ -350,7 +350,7 @@ public:
             set_x(get_x()+(speed/1000)*cos(get_angle_z()*PI/180));            
        }
        
-              void do_crouch(bool updown, float transition, float min_lvl, float max_lvl){
+       void do_crouch(bool updown, float transition, float min_lvl, float max_lvl){
             if(updown){
                 if (get_height() < max_lvl){
                    set_height(get_height()+(transition)/1000);
@@ -364,22 +364,7 @@ public:
                 }
             }
        }
-       
-      void do_prone(bool updown, float transition){
-            if(updown){
-/* if (get_height() < max_lvl){
-set_height(get_height()+(transition)/1000);
-set_eyes_lvl(get_eyes_lvl()+(transition)/1000);
-}*/
-            }
-            else{
-/* if (get_height() > min_lvl){
-set_height(get_height()-(transition)/1000);
-set_eyes_lvl(get_eyes_lvl()-(transition)/1000);
-} */
-            }
-       }
-};       
+};   
 //---------------------------------------------------------------
 
 
