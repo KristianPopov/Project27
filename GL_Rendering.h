@@ -102,34 +102,59 @@ void RenderColison(colison col){
      
 }
 
-void RenderProjectile(projectile proj,camera cam,GLuint proj_tex){
+void RenderProjectile(projectile* proj,camera cam,GLuint proj_tex,int count_proj){
+    for(int i=0;i<count_proj;i++){
+        glPushMatrix();
+        glTranslatef(proj[i].get_x(), proj[i].get_z(), -proj[i].get_y());
+        glRotatef(-cam.get_angle_z(),0,1,0);
+        glRotatef(cam.get_angle_x(),1,0,0);
+        glRotatef(-cam.get_angle_y(),0,0,1);
+        glDisable(GL_LIGHTING);
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, proj_tex);
+        glBegin(GL_QUADS);
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0); 
+        glTexCoord2f(0.0, 1.0);
+        glVertex3f(-0.1, -0.1, 0);
+        glTexCoord2f(1.0, 1.0);
+        glVertex3f(0.1f, -0.1f, 0);
+        glTexCoord2f(1.0, 0.0);
+        glVertex3f(0.1f, 0.1f,  0);
+        glTexCoord2f(0.0, 0.0);
+        glVertex3f(-0.1f, 0.1f, 0);
+        glEnd();
+        glDisable(GL_TEXTURE_2D);
+        glEnable(GL_LIGHTING);
+        glPopMatrix();
+    }              
+}
+
+void RenderModel(int num_p, float* arr_v,float* arr_vt, float* arr_vn,int* arr_f){
+     glPushMatrix();
+     glLineWidth(1);
+     glBegin(GL_TRIANGLES);
+     int i=0;
+     while(i<num_p){
+         glNormal3d(arr_vn[(arr_f[i+2]-1)*3], arr_vn[(arr_f[i+2]-1)*3+1], arr_vn[(arr_f[i+2]-1)*3+2]);
+         glVertex3f(arr_v[(arr_f[i]-1)*3], arr_v[(arr_f[i]-1)*3+1], arr_v[(arr_f[i]-1)*3+2]);
+         i+=3;
+     }
+     glEnd();
      
-    glPushMatrix();
-    
-    glTranslatef(proj.get_x(), proj.get_z(), -proj.get_y());
-    glRotatef(-cam.get_angle_z(),0,1,0);
-    glRotatef(cam.get_angle_x(),1,0,0);
-    glRotatef(-cam.get_angle_y(),0,0,1);
-    glDisable(GL_LIGHTING);
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, proj_tex);
-    glBegin(GL_QUADS);
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0); 
-    glTexCoord2f(0.0, 1.0);
-    glVertex3f(-0.1, -0.1, 0);
-    glTexCoord2f(1.0, 1.0);
-    glVertex3f(0.1f, -0.1f, 0);
-    glTexCoord2f(1.0, 0.0);
-    glVertex3f(0.1f, 0.1f,  0);
-    glTexCoord2f(0.0, 0.0);
-    glVertex3f(-0.1f, 0.1f, 0);
-    glEnd();
-    glDisable(GL_TEXTURE_2D);
-    glEnable(GL_LIGHTING);
-    glPopMatrix();
-    
-    glColor4f(1,1,1,1);        
-              
+ /*    glDisableClientState (GL_COLOR_ARRAY);
+     
+     glPointSize(10);
+     
+     glVertexPointer (3, GL_FLOAT, 0, arr_v);    
+     glNormalPointer(GL_FLOAT, 0, arr_vn);
+     glTexCoordPointer(2, GL_FLOAT, 0, arr_vt);
+     glColor4f(0,0.5,1,1);
+     //glDrawArrays(GL_POINTS,1,num_p/3);
+     glColor4f(1,1,1,1);
+     //glDrawArrays(GL_LINE_STRIP,1,num_v/3);
+     //glDrawRangeElements(GL_LINE_LOOP, 0, 3, 4, GL_UNSIGNED_BYTE, arr_f);
+     //glDrawElements(GL_TRIANGLE_FAN, num_v/3, GL_UNSIGNED_BYTE, arr_f);*/
+     glPopMatrix();          
 }
      
 void RenderMovable(movable_objects movable[10],GLuint texture){
@@ -259,7 +284,6 @@ void RenderMap(GLuint fence, GLuint ground){
      
     glBegin(GL_QUADS);
     glColor3f(1.0f, 1.0f, 1.0f);
-
                   
     glNormal3d(0, 1, 0);
     glTexCoord2f(0.0, 5.0);
