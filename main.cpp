@@ -7,6 +7,8 @@
 #include <process.h>
 #include "engine.h" //Game engine
 #include "GL_Rendering.h"
+#include <vector>
+//#include "obj_loader.h"
 
 
 /**************************
@@ -25,7 +27,8 @@ WPARAM wParam, LPARAM lParam);
  *
  **************************/
 
-projectile proj(500,0);
+projectile proj[10000];
+int count_proj=0;
 colison col;
 player main_player;
 map test_map(50,50);
@@ -113,6 +116,14 @@ int WINAPI WinMain (HINSTANCE hInstance,
     /* enable OpenGL for the window */
     EnableOpenGL (hWnd, &hDC, &hRC);
     
+    float* arr_v;
+    float* arr_vt;
+    float* arr_vn;
+    int* arr_f;
+    int i_f=0, i_v=0, i_vt=0, i_vn=0;
+    
+    //int result = objLoadModel("pametnik2.obj", arr_v, arr_vt, arr_vn, arr_f, i_v, i_vt, i_vn, i_f);
+    
     PlaySound("Sounds/Powered.wav", NULL, SND_ASYNC);
     
     //GLuint *frame = (GLuint *)malloc(sizeof(GLuint)*10);
@@ -127,6 +138,7 @@ int WINAPI WinMain (HINSTANCE hInstance,
     GLuint ground = loadTexture(true, "Textures/ground.dds" );
     GLuint crosshair = loadTexture(true, "Textures/crosshair_2.dds" );
     GLuint bullet = loadTexture(true, "Textures/bullet.dds" );
+    GLuint tiles = loadTexture(true, "Textures/tiles.dds" );
     GLuint skybox[5] = {
            loadTexture(true, "Textures/skybox_top.dds" ),
            loadTexture(true, "Textures/skybox_left.dds" ),
@@ -190,7 +202,8 @@ int WINAPI WinMain (HINSTANCE hInstance,
           else glColor3f(1,1,1);     
           RenderMovable(movable,crate);
           RenderColison(col);
-          RenderProjectile(proj,main_player,bullet);
+          RenderProjectile(proj,main_player,bullet,count_proj);
+          //RenderModel(i_f,arr_v,arr_vt,arr_vn,arr_f);
           //cout<<proj.get_x()<<' '<<proj.get_y()<<' '<<proj.get_z()<<endl;  
           glPopMatrix();
 
@@ -240,10 +253,10 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
         return 0;
 
     case WM_LBUTTONDOWN:
+         mciSendString("play Sounds/barshot.wav", NULL, 0, NULL);
          if(FireTimer.get()>500){
           fire=true;
           FireTimer.reset();
-          mciSendString("play Sounds/barshot.wav", NULL, 0, NULL);
           }
         return 0;
         
@@ -372,7 +385,7 @@ void Phys_Thread(void* PARAMS){
          {
              main_player.do_crouch(0,4,0.8,1.8);
              if(move_forward||move_back||move_left||move_right){
-                 main_player.set_accuracy(1,2);
+                 main_player.set_accuracy(1,2);//dispersion in degrees
                  if(move_forward)
                  {
                     main_player.move_forward(1.1);          
@@ -395,7 +408,7 @@ void Phys_Thread(void* PARAMS){
          else if(prone){
               main_player.do_crouch(0,3,0.3,1.8);
              if(move_forward||move_back||move_left||move_right){
-                 main_player.set_accuracy(1,1);
+                 main_player.set_accuracy(1,1);//dispersion in degrees
                  if(move_forward)
                  {
                     main_player.move_forward(1);          
@@ -413,11 +426,11 @@ void Phys_Thread(void* PARAMS){
                     main_player.move_right(0.6);
                  }
              }
-             else main_player.set_accuracy(0,0.3);
+             else main_player.set_accuracy(0,0.3);//dispersion in degrees
          }
-         else { 
+         else{ 
              main_player.do_crouch(1,4,0.8,1.8);
-             main_player.set_accuracy(1,1);
+             main_player.set_accuracy(1,1);//dispersion in degrees
              if(move_forward||move_back||move_left||move_right){
                  main_player.set_accuracy(1,4);
                  if(move_forward)
@@ -437,7 +450,7 @@ void Phys_Thread(void* PARAMS){
                     main_player.move_right(2.4);
                  }
              }
-             else main_player.set_accuracy(0,1);
+             else main_player.set_accuracy(0,1);//dispersion in degrees
          }
          if (main_player.get_x()+0.3>=test_map.get_width()/2){ 
             main_player.set_x(test_map.get_width()/2-0.3);
@@ -497,7 +510,10 @@ void Phys_Thread(void* PARAMS){
          }
          else{ 
               if(jump){
-                       if((main_player.get_z()>=temp_z) && (main_player.get_z()>0)) main_player.phys_fall(1,9.81,PhysTimer.get());
+                       if((main_player.get_z()>=temp_z) && (main_player.get_z()>0)){
+                            main_player.phys_fall(0.3,9.81,PhysTimer.get());
+                            main_player.set_accuracy(1,5);
+                       }
                        else jump=false;
               }
               else{
@@ -508,12 +524,15 @@ void Phys_Thread(void* PARAMS){
          
          if(Timer.get()>2000){
          if(fire){
-             proj.launch(main_player.get_x(),main_player.get_y(),main_player.get_eyes_lvl()+main_player.get_z()-0.1,main_player.get_angle_z()-(rand()%(int)(main_player.get_accuracy()*1000))/1000,-main_player.get_elevation()+(rand()%(int)(main_player.get_accuracy()*1000))/1000);
+             proj[count_proj].launch(main_player.get_x(),main_player.get_y(),main_player.get_eyes_lvl()+main_player.get_z()-0.1,main_player.get_angle_z()-(rand()%(int)(main_player.get_accuracy()*1000))/1000,-main_player.get_elevation()+(rand()%(int)(main_player.get_accuracy()*1000))/1000);
+             if(count_proj<10000)count_proj++;
+             else count_proj=0;
              fire=false;
          }
-         proj.proj_path();
+         for(int i=0;i<count_proj;i++){
+                 proj[i].proj_path();
          }
-         
+         }         
         }                                   
         Sleep(1);
      }
@@ -554,5 +573,4 @@ void XY2Polar(RECT ds,int scr_x,int scr_y, float &azimuth,float &elevation,int r
                 fy--;
            }    
 }
-
 
