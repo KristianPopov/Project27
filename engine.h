@@ -217,14 +217,14 @@ public:
       }
       
       void proj_path(){
-            float speed_z = (speed/1000)*sin(elevation*PI/180);
             if(get_z()>0){
-            set_z(get_z()+ speed_z);
-            float buffer = (speed/1000)*cos(elevation*PI/180);
-            set_y(get_y()+buffer*cos(get_angle_z()*PI/180));
-            set_x(get_x()+buffer*sin(get_angle_z()*PI/180));
-            proj_timer++;
-            phys_fall(speed_z,9.81,proj_timer);
+                float speed_z = (speed/1000)*sin(elevation*PI/180);                      
+                set_z(get_z()+ speed_z);
+                float buffer = (speed/1000)*cos(elevation*PI/180);
+                set_y(get_y()+buffer*cos(get_angle_z()*PI/180));
+                set_x(get_x()+buffer*sin(get_angle_z()*PI/180));
+                proj_timer++;
+                phys_fall(speed_z,9.81,proj_timer);
             }      
       }
 };
@@ -502,7 +502,7 @@ int PolygonDetect(float &temp_x,float &temp_y,float &temp_z,
            (obj_x-0.1<=Check(1, A_x, B_x, C_x)) &&
            (obj_y-0.1<=-Check(0,A_y, B_y, C_y)) &&
            (obj_y+0.1>=-Check(1,A_y, B_y, C_y)) &&
-           (obj_z+0.1>=Check(0,A_z, B_z, C_z)) &&
+           (obj_z+0.5>=Check(0,A_z, B_z, C_z)) &&
            (obj_z-0.1<=Check(1,A_z, B_z, C_z)))
            {
                 float buffer;                                                                         
@@ -525,6 +525,7 @@ int PolygonDetect(float &temp_x,float &temp_y,float &temp_z,
                     Swap(A_z,B_z);
                 }
 
+                //cout<<A_x<<' '<<B_x<<' '<<C_x<<endl;
                                                                                          
                 if((obj_x<B_x-
                 modul(B_x-C_x)*Check_sign(B_x,C_x)*
@@ -583,7 +584,8 @@ int PolygonDetect(float &temp_x,float &temp_y,float &temp_z,
                                return 0;                                 
                            }     
                        }
-                       else return -1;
+                       else if((A_z==B_z) && (B_z==C_z)){temp_z=A_z; return 0;}
+                       //else return -1;
                    }
                 }
            }
