@@ -8,7 +8,8 @@
 #include "engine.h" //Game engine
 #include "GL_Rendering.h"
 #include <vector>
-//#include "obj_loader.h"
+#include "obj_loader.h"
+#include "col_loader.h"
 
 
 /**************************
@@ -34,8 +35,8 @@ player main_player;
 map test_map(50,50);
 movable_objects movable[10] = {movable_objects(-10, -5, 0, 1, 1, 1), 
                                movable_objects(-10, 20, 0, 1, 1, 2),
-                               movable_objects(0, 7, 0, 2, 2, 2),
-                               movable_objects(1, 4, 0, 2, 1, 1),
+                               movable_objects(-4, 7, 0, 2, 2, 2),
+                               movable_objects(-4, 4, 0, 2, 1, 1),
                                movable_objects(12, 18, 0, 0.5, 0.5, 0.5),
                                movable_objects(10, -15, 0, 1, 1, 1),
                                movable_objects(4, -23, 0, 2, 2, 2),
@@ -48,9 +49,14 @@ timer FireTimer;
 
 bool move_forward=0, move_back=0, move_right=0, move_left=0, crouch=0, jump=0, prone=0, fire=0;
 
-bool boom;
+bool boom,effect,eff2;
 
 float temp_x,temp_y,temp_z;
+
+
+    float* col_v;
+    int* col_f;
+    int col_i_v=0, col_i_f=0;
 
 /**************************
  * WinMain
@@ -122,11 +128,10 @@ int WINAPI WinMain (HINSTANCE hInstance,
     int* arr_f;
     int i_f=0, i_v=0, i_vt=0, i_vn=0;
     
-    //int result = objLoadModel("pametnik2.obj", arr_v, arr_vt, arr_vn, arr_f, i_v, i_vt, i_vn, i_f);
+    int result = objLoadModel("pametnik2.obj", arr_v, arr_vt, arr_vn, arr_f, i_v, i_vt, i_vn, i_f);
+    LoadColison("pametnik.col",col_v,col_f, col_i_v,col_i_f);
     
     PlaySound("Sounds/Powered.wav", NULL, SND_ASYNC);
-    
-    //GLuint *frame = (GLuint *)malloc(sizeof(GLuint)*10);
     
     /*initialize OpenGL */
     GL_init();
@@ -139,6 +144,8 @@ int WINAPI WinMain (HINSTANCE hInstance,
     GLuint crosshair = loadTexture(true, "Textures/crosshair_2.dds" );
     GLuint bullet = loadTexture(true, "Textures/bullet.dds" );
     GLuint tiles = loadTexture(true, "Textures/tiles.dds" );
+    GLuint cracked_monument = loadTexture(true, "Textures/cracked_monument.dds" );
+    GLuint cracked_concrete2 = loadTexture(true, "Textures/cracked_concrete2.dds" );
     GLuint skybox[5] = {
            loadTexture(true, "Textures/skybox_top.dds" ),
            loadTexture(true, "Textures/skybox_left.dds" ),
@@ -175,6 +182,21 @@ int WINAPI WinMain (HINSTANCE hInstance,
         	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	        glLoadIdentity();
          
+         if(eff2){
+         glEnable(GL_FOG);
+           {
+             GLfloat fogColor[4] = {0.5, 0.5, 0.5, 1.0};
+        
+              glFogi (GL_FOG_MODE, GL_EXP);
+              glFogfv (GL_FOG_COLOR, fogColor);
+              glFogf (GL_FOG_DENSITY, 0.15);
+              glHint (GL_FOG_HINT, GL_DONT_CARE);
+              glFogf (GL_FOG_START, 1.0);
+              glFogf (GL_FOG_END, 5.0);
+           }
+        }
+        else glDisable(GL_FOG);
+         
            GetCursorPos( &pt );
              
          XY2Polar(ds,pt.x,pt.y,azth,elev,640,480,0.1);
@@ -189,7 +211,7 @@ int WINAPI WinMain (HINSTANCE hInstance,
          CameraUse(cam,azth,elev,main_player.get_x(),main_player.get_y(),main_player.get_eyes_lvl()+main_player.get_z());
 
          
-         //cout<<main_player.get_x()<<' '<<main_player.get_y()<<' ' << main_player.get_z()<<endl;
+         cout<<main_player.get_x()<<' '<<main_player.get_y()<<' ' << main_player.get_z()<<endl;
          
              glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight0);
             	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight0);
@@ -201,10 +223,10 @@ int WINAPI WinMain (HINSTANCE hInstance,
           if(boom) glColor3f(1,0,0);
           else glColor3f(1,1,1);     
           RenderMovable(movable,crate);
-          RenderColison(col);
+          //RenderColison(col);
           RenderProjectile(proj,main_player,bullet,count_proj);
-          //RenderModel(i_f,arr_v,arr_vt,arr_vn,arr_f);
-          //cout<<proj.get_x()<<' '<<proj.get_y()<<' '<<proj.get_z()<<endl;  
+          RenderModel(i_f,arr_v,arr_vt,arr_vn,arr_f,tiles,cracked_monument,cracked_concrete2);
+          //cout<<proj.get_x()<<' '<<proj.get_y()<<' '<<proj.get_z()<<endl; 
           glPopMatrix();
 
           glPushMatrix();
@@ -212,6 +234,21 @@ int WINAPI WinMain (HINSTANCE hInstance,
            if(advert){
            advert = SAD_Engine_Advert(sad,Timer.get());
            }
+           if(effect){ 
+            glBlendFunc(GL_SRC_ALPHA,GL_ONE);
+            glBegin(GL_QUADS);
+            glColor4f(0.0f, 0.3f, 1.0f, 0.5); 
+            glTexCoord2f(0.0, 1.0);
+            glVertex3f(-1.3f, -1.0f, -1);
+            glTexCoord2f(1.0, 1.0);
+            glVertex3f(1.3f, -1.0f, -1);
+            glTexCoord2f(1.0, 0.0);
+            glVertex3f(1.3f, 1.0f,  -1);
+            glTexCoord2f(0.0, 0.0);
+            glVertex3f(-1.3f, 1.0f, -1);
+            glEnd();
+           }
+           else glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
           glPopMatrix();
 
           if(!advert)RenderCrosshair(crosshair,main_player.get_accuracy());
@@ -278,6 +315,13 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message,
         case ' ': jump=true; //NEW
                         break;
         case 'C': crouch=true; //NEW
+                       break;
+        case '1': effect=true;
+                       break;
+        case '2': effect=false;
+                  eff2=false;
+                       break;
+        case '3': eff2=true;
                        break;
         case VK_CONTROL: prone=true; //NEW
                       break;
@@ -493,32 +537,49 @@ void Phys_Thread(void* PARAMS){
             if(main_player.get_y()>movable[i].get_y()+movable[i].get_lenght()-0.35){
                if (movable[i].get_y()>-test_map.get_lenght()/2) movable[i].set_y(movable[i].get_y()-0.0041);
                else main_player.set_y(movable[i].get_y()+movable[i].get_lenght()+0.3);
-            }           
+            }
+             for(int j=0;j<col_i_f;j+=3){
+                 result = PolygonDetect(temp_x,temp_y,temp_z,movable[i].get_x(),movable[i].get_y(),movable[i].get_z(),
+                                      col_v[(col_f[i]-1)*3], col_v[(col_f[i]-1)*3+2], col_v[(col_f[i]-1)*3+1],
+                                      col_v[(col_f[i+1]-1)*3], col_v[(col_f[i+1]-1)*3+2], col_v[(col_f[i+1]-1)*3+1],
+                                      col_v[(col_f[i+2]-1)*3], col_v[(col_f[i+2]-1)*3+2], col_v[(col_f[i+2]-1)*3+1]);
+                 if(!result) break;
+             }
+             movable[i].set_z(temp_z);
          }
          
          temp_x=main_player.get_x();
          temp_y=main_player.get_y();
          temp_z=main_player.get_z();         
 
-         result = PolygonDetect(temp_x,temp_y,temp_z,main_player.get_x(),main_player.get_y(),main_player.get_z(),
-                              col.coords[0][0],col.coords[0][2],col.coords[0][1],
-                              col.coords[1][0],col.coords[1][2],col.coords[1][1],
-                              col.coords[2][0],col.coords[2][2],col.coords[2][1]);                   
+         for(int i=0;i<col_i_f;i+=3){
+             result = PolygonDetect(temp_x,temp_y,temp_z,main_player.get_x(),main_player.get_y(),main_player.get_z(),
+                                  col_v[(col_f[i]-1)*3], col_v[(col_f[i]-1)*3+2], col_v[(col_f[i]-1)*3+1],
+                                  col_v[(col_f[i+1]-1)*3], col_v[(col_f[i+1]-1)*3+2], col_v[(col_f[i+1]-1)*3+1],
+                                  col_v[(col_f[i+2]-1)*3], col_v[(col_f[i+2]-1)*3+2], col_v[(col_f[i+2]-1)*3+1]);
+             if(!result) break;
+         }
+                                  
+/*             result = PolygonDetect(temp_x,temp_y,temp_z,main_player.get_x(),main_player.get_y(),main_player.get_z(),
+                                  col.coords[0][0],col.coords[0][2],col.coords[0][1],
+                                  col.coords[1][0],col.coords[1][2],col.coords[1][1],
+                                  col.coords[2][0],col.coords[2][2],col.coords[2][1]);*/         
+                 
          if((!result) && (!jump)){
               main_player.set_coords(temp_x,temp_y,temp_z);
               PhysTimer.reset();
          }
          else{ 
               if(jump){
-                       if((main_player.get_z()>=temp_z) && (main_player.get_z()>0)){
-                            main_player.phys_fall(0.3,9.81,PhysTimer.get());
+                       if(main_player.get_z()>=temp_z){
+                            main_player.phys_fall(0.5,9.81,PhysTimer.get());
                             main_player.set_accuracy(1,5);
                        }
                        else jump=false;
               }
               else{
-                      if(main_player.get_z()>0) main_player.phys_fall(0,9.81,PhysTimer.get());
-                      else main_player.set_z(0);
+                      if(main_player.get_z()>=temp_z) main_player.phys_fall(0,9.81,PhysTimer.get());
+                      else main_player.set_z(temp_z);
               }
          }
          
