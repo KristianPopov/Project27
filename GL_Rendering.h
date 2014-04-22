@@ -7,6 +7,7 @@
 #define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
 
 bool SAD_Engine_Advert(GLuint powered_tex,int timer){
+     
   if(timer<8000){
     glBegin(GL_QUADS);
     glColor4f(0.0f, 0.0f, 0.0f, (3000-timer)*0.0005); 
@@ -129,19 +130,43 @@ void RenderProjectile(projectile* proj,camera cam,GLuint proj_tex,int count_proj
     }              
 }
 
-void RenderModel(int num_p, float* arr_v,float* arr_vt, float* arr_vn,int* arr_f){
+void RenderModel(int num_p, float* arr_v,float* arr_vt, float* arr_vn,int* arr_f,GLuint texture, GLuint texture1, GLuint texture2){
      glPushMatrix();
      glLineWidth(1);
+     glTranslatef(0,0.01,0);
+     glEnable(GL_TEXTURE_2D);
+     glBindTexture(GL_TEXTURE_2D, texture);
      glBegin(GL_TRIANGLES);
      int i=0;
-     while(i<num_p){
+     while(i<num_p-90){
          glNormal3d(arr_vn[(arr_f[i+2]-1)*3], arr_vn[(arr_f[i+2]-1)*3+1], arr_vn[(arr_f[i+2]-1)*3+2]);
+         glTexCoord2f(arr_vt[(arr_f[i+1]-1)*2], arr_vt[(arr_f[i+1]-1)*2+1]);
          glVertex3f(arr_v[(arr_f[i]-1)*3], arr_v[(arr_f[i]-1)*3+1], arr_v[(arr_f[i]-1)*3+2]);
          i+=3;
      }
      glEnd();
      
- /*    glDisableClientState (GL_COLOR_ARRAY);
+     glBindTexture(GL_TEXTURE_2D, texture1);     
+     glBegin(GL_TRIANGLES);
+     while(i<num_p-27){
+         glNormal3d(arr_vn[(arr_f[i+2]-1)*3], arr_vn[(arr_f[i+2]-1)*3+1], arr_vn[(arr_f[i+2]-1)*3+2]);
+         glTexCoord2f(arr_vt[(arr_f[i+1]-1)*2], arr_vt[(arr_f[i+1]-1)*2+1]);
+         glVertex3f(arr_v[(arr_f[i]-1)*3], arr_v[(arr_f[i]-1)*3+1], arr_v[(arr_f[i]-1)*3+2]);
+         i+=3;
+     }
+     glEnd();
+     
+     glBindTexture(GL_TEXTURE_2D, texture2);     
+     glBegin(GL_TRIANGLES);
+     while(i<num_p){
+         glNormal3d(arr_vn[(arr_f[i+2]-1)*3], arr_vn[(arr_f[i+2]-1)*3+1], arr_vn[(arr_f[i+2]-1)*3+2]);
+         glTexCoord2f(arr_vt[(arr_f[i+1]-1)*2], arr_vt[(arr_f[i+1]-1)*2+1]);
+         glVertex3f(arr_v[(arr_f[i]-1)*3], arr_v[(arr_f[i]-1)*3+1], arr_v[(arr_f[i]-1)*3+2]);
+         i+=3;
+     }
+     glEnd();
+     
+     glDisableClientState (GL_COLOR_ARRAY);
      
      glPointSize(10);
      
@@ -151,9 +176,10 @@ void RenderModel(int num_p, float* arr_v,float* arr_vt, float* arr_vn,int* arr_f
      glColor4f(0,0.5,1,1);
      //glDrawArrays(GL_POINTS,1,num_p/3);
      glColor4f(1,1,1,1);
-     //glDrawArrays(GL_LINE_STRIP,1,num_v/3);
+     //glDrawArrays(GL_TRIANGLE_FAN,0,(num_p-1)/3);
      //glDrawRangeElements(GL_LINE_LOOP, 0, 3, 4, GL_UNSIGNED_BYTE, arr_f);
-     //glDrawElements(GL_TRIANGLE_FAN, num_v/3, GL_UNSIGNED_BYTE, arr_f);*/
+     //glDrawElements(GL_TRIANGLE_FAN, num_p, GL_UNSIGNED_BYTE, arr_f);
+     glDisable(GL_TEXTURE_2D);
      glPopMatrix();          
 }
      
@@ -161,7 +187,7 @@ void RenderMovable(movable_objects movable[10],GLuint texture){
      
      glEnable(GL_MULTISAMPLE);
      glEnable(GL_BLEND);
-     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+     //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
      glEnable(GL_LINE_SMOOTH);
      glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
      glEnable(GL_POINT_SMOOTH);
@@ -221,7 +247,7 @@ void RenderMovable(movable_objects movable[10],GLuint texture){
      glEnable(GL_TEXTURE_2D);
      glBindTexture(GL_TEXTURE_2D, texture);
 
-     glTranslatef(movable[i].get_x(),-movable[i].get_z(),-movable[i].get_y());
+     glTranslatef(movable[i].get_x(),movable[i].get_z(),-movable[i].get_y());
      
      glVertexPointer (3, GL_FLOAT, 0, v);    
      glColorPointer (4, GL_FLOAT, 0, c);
