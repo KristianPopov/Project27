@@ -68,6 +68,7 @@ class game_object{
       float x,y,z; //coordinates of the object in the game
       float angle_x,angle_y,angle_z; //angles by all axis
       float mass; //mass of the object
+      float lenght, width, height;
       
 public:
        // all constructors
@@ -169,10 +170,34 @@ public:
            mass=new_mass;
       }
       
+       float get_lenght(){
+           return lenght;
+      }
+      
+      void set_lenght(float new_lenght){
+           lenght=new_lenght;
+      }
+      
+       float get_width(){
+           return width;
+      }
+      
+      void set_width(float new_width){
+           width=new_width;
+      }
+      
+       float get_height(){
+           return height;
+      }
+      
+      void set_height(float new_height){
+           height=new_height;
+      }
+      
       //physics of the object
       
       void phys_fall(float Vo,float G,int timer){
-           z+=(Vo/1000 - G*0.0000001*timer)/2;  
+           z+=Vo/1000 - (G*0.000001*timer)/2;  
       }
 };
 //-----------------------------------
@@ -469,6 +494,18 @@ public:
        }     
 };
 //------------------------------------------------------
+
+class model{
+public:
+    float* arr_v;
+    float* arr_vt;
+    float* arr_vn;
+    int* arr_f;
+    int num_f, num_v, num_vt, num_vn;
+    
+    model():num_f(0), num_v(0), num_vt(0), num_vn(0){}
+};
+
 class colison{
 public:
        colison(){
@@ -506,13 +543,13 @@ int PolygonDetect(float &temp_x,float &temp_y,float &temp_z,
            (obj_z-0.1<=Check(1,A_z, B_z, C_z)))
            {
                 float buffer;                                                                         
-                if((C_y>B_y)&&(C_y<A_y)){
+                if((C_y>=B_y)&&(C_y<=A_y)){
                         Swap(A_x,C_x);
                         Swap(A_y,C_y);
                         Swap(A_z,C_z);                
                 }
                 else{
-                    if((C_y<B_y)&&(C_y>A_y)){
+                    if((C_y<=B_y)&&(C_y>=A_y)){
                         Swap(B_x,C_x);
                         Swap(B_y,C_y);
                         Swap(B_z,C_z);
@@ -595,3 +632,39 @@ int PolygonDetect(float &temp_x,float &temp_y,float &temp_z,
 float speed_trans(float acc,float Vo,float Vmax){
       
 }
+
+//--------------------------------------------------------------------------------------------
+//targert
+class target : public game_object{
+      public:
+
+      target(float init_x, float init_y, float init_z, float init_lenght, float init_width, float init_height){
+           set_x(init_x);
+           set_y(init_y);
+           set_z(init_z);
+           set_lenght(init_lenght);
+           set_width(init_width);
+           set_height(init_height);
+      }
+
+      void set_coords(float new_x,float new_y, float new_z){ // set coords of the camera
+           set_x(new_x);
+           set_y(new_y);
+           set_z(new_z);            
+      }
+      
+      void set_dimensions(float new_lenght, float new_width, float new_height){
+           set_lenght(new_lenght);
+           set_width(new_width);
+           set_height(new_height);
+      }
+
+      bool detect(float proj_x, float proj_y, float proj_z){
+          if((proj_x > get_x()) && (proj_x < get_x() + get_width()) && 
+          (proj_y > get_y()) && (proj_y < get_y() + get_lenght()) && 
+          (proj_z > get_z()) && (proj_z < get_z() + get_height())){  
+               return true;
+          }
+          else return false;    
+      }
+};
