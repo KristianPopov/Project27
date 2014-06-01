@@ -1,0 +1,13 @@
+//Controls
+key_move_forward 87
+key_move_left 65
+key_move_back 83
+key_move_right 68
+key_fire 1
+key_prone 17
+key_crouch 67
+key_jump 32
+//Settings
+setting_fullscreen 0
+setting_screen_lenght 800
+setting_screen_height 600
